@@ -126,12 +126,13 @@ class Object implements Configurable
      * @throws UnknownPropertyException if the property is not defined
      * @throws InvalidCallException if the property is write-only
      * @see __set()
+     * 在读取对象的一个不存在的成员变量时， __get() 会被自动调用
      */
-    public function __get($name)
+    public function __get($name)                // 这里$name是属性名
     {
-        $getter = 'get' . $name;
+        $getter = 'get' . $name;                // getter函数的函数名
         if (method_exists($this, $getter)) {
-            return $this->$getter();
+            return $this->$getter();            // 调用了getter函数
         } elseif (method_exists($this, 'set' . $name)) {
             throw new InvalidCallException('Getting write-only property: ' . get_class($this) . '::' . $name);
         } else {
@@ -149,12 +150,13 @@ class Object implements Configurable
      * @throws UnknownPropertyException if the property is not defined
      * @throws InvalidCallException if the property is read-only
      * @see __get()
+     * 在写入对象的一个不存在的成员变量时， __set() 会被自动调用
      */
-    public function __set($name, $value)
+    public function __set($name, $value)        // $name是属性名，$value是拟写入的属性值
     {
-        $setter = 'set' . $name;
+        $setter = 'set' . $name;                // setter函数的函数名
         if (method_exists($this, $setter)) {
-            $this->$setter($value);
+            $this->$setter($value);             // 调用setter函数
         } elseif (method_exists($this, 'get' . $name)) {
             throw new InvalidCallException('Setting read-only property: ' . get_class($this) . '::' . $name);
         } else {
@@ -250,7 +252,8 @@ class Object implements Configurable
      * @param string $name the property name
      * @param boolean $checkVars whether to treat member variables as properties
      * @return boolean whether the property can be read
-     * @see canSetProperty()
+     * @see canSetProperty()    
+     * // 属性是否可读
      */
     public function canGetProperty($name, $checkVars = true)
     {
@@ -269,6 +272,7 @@ class Object implements Configurable
      * @param boolean $checkVars whether to treat member variables as properties
      * @return boolean whether the property can be written
      * @see canGetProperty()
+     * // 属性是否可写
      */
     public function canSetProperty($name, $checkVars = true)
     {
