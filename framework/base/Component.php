@@ -100,7 +100,7 @@ class Component extends Object
     /**
      * @var array the attached event handlers (event name => handlers)
      */
-    private $_events = [];
+    private $_events = [];      // 这个就是handler数组
     /**
      * @var Behavior[]|null the attached behaviors (behavior name => behavior). This is `null` when not initialized.
      */
@@ -128,12 +128,12 @@ class Component extends Object
         if (method_exists($this, $getter)) {
             // read property, e.g. getName()
             return $this->$getter();
-        } else {
+        } else {                            // 注意这个 else 分支的内容，正是与 yii\base\Object::__get() 的不同之处
             // behavior property
-            $this->ensureBehaviors();
+            $this->ensureBehaviors();       // 确保行为已经绑定
             foreach ($this->_behaviors as $behavior) {
                 if ($behavior->canGetProperty($name)) {
-                    return $behavior->$name;
+                    return $behavior->$name;// 属性在行为中须为 public。否则不可能通过下面的形式访问呀。
                 }
             }
         }
@@ -473,13 +473,14 @@ class Component extends Object
      * handler list. If false, the new handler will be inserted at the beginning of the existing
      * handler list.
      * @see off()
-     */
+     */// 绑定过程就是将handler写入_event[]
     public function on($name, $handler, $data = null, $append = true)
     {
         $this->ensureBehaviors();
         if ($append || empty($this->_events[$name])) {
             $this->_events[$name][] = [$handler, $data];
         } else {
+            // 如果不是append，就放在了开头
             array_unshift($this->_events[$name], [$handler, $data]);
         }
     }
@@ -499,12 +500,12 @@ class Component extends Object
         if (empty($this->_events[$name])) {
             return false;
         }
-        if ($handler === null) {
+        if ($handler === null) {                // $handler === null 时解除所有的 $name 关联handler，没有办法只解除其中的一两个
             unset($this->_events[$name]);
             return true;
         } else {
             $removed = false;
-            foreach ($this->_events[$name] as $i => $event) {
+            foreach ($this->_events[$name] as $i => $event) {   // 遍历所有的 $handler
                 if ($event[0] === $handler) {
                     unset($this->_events[$name][$i]);
                     $removed = true;
@@ -536,9 +537,9 @@ class Component extends Object
             }
             $event->handled = false;
             $event->name = $name;
-            foreach ($this->_events[$name] as $handler) {
+            foreach ($this->_events[$name] as $handler) {   // 遍历handler数组，并依次调用
                 $event->data = $handler[1];
-                call_user_func($handler[0], $event);
+                call_user_func($handler[0], $event);        // 使用PHP的call_user_func调用handler
                 // stop further handling if the event is handled
                 if ($event->handled) {
                     return;

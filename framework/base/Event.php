@@ -28,25 +28,25 @@ class Event extends Object
      * @var string the event name. This property is set by [[Component::trigger()]] and [[trigger()]].
      * Event handlers may use this property to check what event it is handling.
      */
-    public $name;
+    public $name;           // 事件名
     /**
      * @var object the sender of this event. If not set, this property will be
      * set as the object whose "trigger()" method is called.
      * This property may also be a `null` when this event is a
      * class-level event which is triggered in a static context.
      */
-    public $sender;
+    public $sender;         // 事件发布者，通常是调用了 trigger() 的对象或类。
     /**
      * @var boolean whether the event is handled. Defaults to false.
      * When a handler sets this to be true, the event processing will stop and
      * ignore the rest of the uninvoked event handlers.
      */
-    public $handled = false;
+    public $handled = false;// 是否终止事件的后续处理
     /**
      * @var mixed the data that is passed to [[Component::on()]] when attaching an event handler.
      * Note that this varies according to which event handler is currently executing.
      */
-    public $data;
+    public $data;           // 事件相关数据
 
     /**
      * @var array contains all globally registered event handlers.
@@ -82,7 +82,7 @@ class Event extends Object
      * handler list. If false, the new handler will be inserted at the beginning of the existing
      * handler list.
      * @see off()
-     */
+     */// 用于绑定事件handler
     public static function on($class, $name, $handler, $data = null, $append = true)
     {
         $class = ltrim($class, '\\');
@@ -104,7 +104,7 @@ class Event extends Object
      * If it is null, all handlers attached to the named event will be removed.
      * @return boolean whether a handler is found and detached.
      * @see on()
-     */
+     */// 用于取消事件handler绑定
     public static function off($class, $name, $handler = null)
     {
         $class = ltrim($class, '\\');
@@ -137,7 +137,7 @@ class Event extends Object
      * @param string|object $class the object or the fully qualified class name specifying the class-level event.
      * @param string $name the event name.
      * @return boolean whether there is any handler attached to the event.
-     */
+     */// 用于判断是否有相应的handler与事件对应
     public static function hasHandlers($class, $name)
     {
         if (empty(self::$_events[$name])) {
@@ -171,7 +171,7 @@ class Event extends Object
      * @param string|object $class the object or the fully qualified class name specifying the class-level event.
      * @param string $name the event name.
      * @param Event $event the event parameter. If not set, a default [[Event]] object will be created.
-     */
+     */// 用于触发事件
     public static function trigger($class, $name, $event = null)
     {
         if (empty(self::$_events[$name])) {
