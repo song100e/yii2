@@ -97,7 +97,7 @@ class TimestampBehavior extends AttributeBehavior
     {
         parent::init();
 
-        if (empty($this->attributes)) {
+        if (empty($this->attributes)) { // 重点看这里
             $this->attributes = [
                 BaseActiveRecord::EVENT_BEFORE_INSERT => [$this->createdAtAttribute, $this->updatedAtAttribute],
                 BaseActiveRecord::EVENT_BEFORE_UPDATE => $this->updatedAtAttribute,
