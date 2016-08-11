@@ -135,7 +135,7 @@ class Component extends Object
                 if ($behavior->canGetProperty($name)) {
                     return $behavior->$name;// 属性在行为中须为 public。否则不可能通过下面的形式访问呀。
                 }
-            }
+            }                               // 不存在getter之后，还要看看是不是注入的行为的属性
         }
         if (method_exists($this, 'set' . $name)) {
             throw new InvalidCallException('Getting write-only property: ' . get_class($this) . '::' . $name);
@@ -169,16 +169,16 @@ class Component extends Object
             $this->$setter($value);
 
             return;
-        } elseif (strncmp($name, 'on ', 3) === 0) {
+        } elseif (strncmp($name, 'on ', 3) === 0) {     // 'on ' 打头的配置项在这里处理
             // on event: attach event handler
             $this->on(trim(substr($name, 3)), $value);
-
+            // 对于 'on event' 配置项，将配置值作为事件 handler 绑定到 evnet 上去
             return;
-        } elseif (strncmp($name, 'as ', 3) === 0) {
+        } elseif (strncmp($name, 'as ', 3) === 0) {     // 'as ' 打头的配置项在这里处理
             // as behavior: attach behavior
             $name = trim(substr($name, 3));
             $this->attachBehavior($name, $value instanceof Behavior ? $value : Yii::createObject($value));
-
+            // 对于 'as behavior' 配置项，将配置值作为创建Behavior的配置，创建后绑定为 behavior
             return;
         } else {
             // behavior property
@@ -273,7 +273,7 @@ class Component extends Object
      * @param array $params method parameters
      * @return mixed the method return value
      * @throws UnknownMethodException when calling unknown method
-     */
+     */// Yii通过 __call() 魔术方法实现对行为中方法的注入
     public function __call($name, $params)
     {
         $this->ensureBehaviors();
@@ -643,8 +643,8 @@ class Component extends Object
     public function ensureBehaviors()
     {
         if ($this->_behaviors === null) {
-            $this->_behaviors = [];
-            foreach ($this->behaviors() as $name => $behavior) {
+            $this->_behaviors = [];                                 // 为null表示尚未绑定。多说一句，为空数组表示没有绑定任何行为
+            foreach ($this->behaviors() as $name => $behavior) {    // 遍历 $this->behaviors() 返回的数组，并绑定
                 $this->attachBehaviorInternal($name, $behavior);
             }
         }
@@ -657,20 +657,20 @@ class Component extends Object
      * will be detached first.
      * @param string|array|Behavior $behavior the behavior to be attached
      * @return Behavior the attached behavior.
-     */
+     *///在Yii中，所有后缀为 *Internal 的方法，都是私有的。
     private function attachBehaviorInternal($name, $behavior)
     {
-        if (!($behavior instanceof Behavior)) {
-            $behavior = Yii::createObject($behavior);
+        if (!($behavior instanceof Behavior)) {             // 不是 Behavior 实例，说是只是类名、配置数组
+            $behavior = Yii::createObject($behavior);       // 那么就创建出来吧
         }
-        if (is_int($name)) {
+        if (is_int($name)) {                                // 匿名行为
             $behavior->attach($this);
             $this->_behaviors[] = $behavior;
-        } else {
+        } else {                                            // 命名行为
             if (isset($this->_behaviors[$name])) {
-                $this->_behaviors[$name]->detach();
+                $this->_behaviors[$name]->detach();         // 已经有一个同名的行为，要先解除
             }
-            $behavior->attach($this);
+            $behavior->attach($this);                       // 再将新的行为绑定上去。
             $this->_behaviors[$name] = $behavior;
         }
         return $behavior;

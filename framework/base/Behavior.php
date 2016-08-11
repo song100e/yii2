@@ -23,7 +23,7 @@ class Behavior extends Object
     /**
      * @var Component the owner of this behavior
      */
-    public $owner;
+    public $owner;  // 指向行为本身所绑定的Component对象
 
 
     /**
@@ -51,7 +51,7 @@ class Behavior extends Object
      *     Model::EVENT_AFTER_VALIDATE => 'myAfterValidate',
      * ]
      * ```
-     *
+     * Behavior 基类本身没用，主要是子类使用，重载这个函数返回一个数组表示行为所关联的事件
      * @return array events (array keys) and the corresponding event handler methods (array values).
      */
     public function events()
@@ -65,7 +65,7 @@ class Behavior extends Object
      * and attach event handlers as declared in [[events]].
      * Make sure you call the parent implementation if you override this method.
      * @param Component $owner the component that this behavior is to be attached to.
-     */
+     */// 绑定行为到 $owner
     public function attach($owner)
     {
         $this->owner = $owner;
@@ -79,11 +79,11 @@ class Behavior extends Object
      * The default implementation will unset the [[owner]] property
      * and detach event handlers declared in [[events]].
      * Make sure you call the parent implementation if you override this method.
-     */
+     */// 解除绑定
     public function detach()
     {
-        if ($this->owner) {
-            foreach ($this->events() as $event => $handler) {
+        if ($this->owner) { // 这得名花有主的行为才有解除一说
+            foreach ($this->events() as $event => $handler) {   // 遍历行为定义的事件，一一解除
                 $this->owner->off($event, is_string($handler) ? [$this, $handler] : $handler);
             }
             $this->owner = null;

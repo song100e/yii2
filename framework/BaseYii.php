@@ -514,6 +514,7 @@ class BaseYii
      * @param object $object the object to be configured
      * @param array $properties the property initial values given in terms of name-value pairs.
      * @return object the object itself
+     * 配置的过程就是遍历 $config 配置数组，将数组的键作为属性名，以对应的数组元素的值对对象的属性赋值
      */
     public static function configure($object, $properties)
     {

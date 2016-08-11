@@ -199,11 +199,11 @@ abstract class Application extends Module
 
         $this->state = self::STATE_BEGIN;
 
-        $this->preInit($config);
+        $this->preInit($config);                // 第一步：预处理配置项
 
         $this->registerErrorHandler($config);
 
-        Component::__construct($config);
+        Component::__construct($config);        // 第二步：使用 yii\base\Component::__construct() 完成构建 
     }
 
     /**
@@ -216,43 +216,47 @@ abstract class Application extends Module
      */
     public function preInit(&$config)
     {
-        if (!isset($config['id'])) {
+        if (!isset($config['id'])) {            // 配置数组中必须指定应用id，这里仅判断，不赋值。
             throw new InvalidConfigException('The "id" configuration for the Application is required.');
         }
-        if (isset($config['basePath'])) {
-            $this->setBasePath($config['basePath']);
+        // 设置basePath属性，这个属性在Application的父类 yii\base\Module 中定义。在完成设置后，删除配置数组中的 basePath 配置项
+        if (isset($config['basePath'])) {       // basePath必须在配置文件中给出，否则会抛出弃常
+            $this->setBasePath($config['basePath']);    // 这里会设置 @app。 basePath属性，由Application的父类yii\base\Module定义，并提供getter和setter
             unset($config['basePath']);
         } else {
             throw new InvalidConfigException('The "basePath" configuration for the Application is required.');
         }
 
-        if (isset($config['vendorPath'])) {
-            $this->setVendorPath($config['vendorPath']);
-            unset($config['vendorPath']);
+        if (isset($config['vendorPath'])) {     
+            $this->setVendorPath($config['vendorPath']);    // 设置vendorPath属性
+            unset($config['vendorPath']);                   // 设置后，删除$config中的相应配置项
         } else {
             // set "@vendor"
             $this->getVendorPath();
         }
-        if (isset($config['runtimePath'])) {
-            $this->setRuntimePath($config['runtimePath']);
-            unset($config['runtimePath']);
+        if (isset($config['runtimePath'])) {    
+            $this->setRuntimePath($config['runtimePath']);  // 设置runtimePath属性
+            unset($config['runtimePath']);                  // 设置后，删除$config中的相应配置项
         } else {
             // set "@runtime"
             $this->getRuntimePath();
         }
 
         if (isset($config['timeZone'])) {
-            $this->setTimeZone($config['timeZone']);
-            unset($config['timeZone']);
+            $this->setTimeZone($config['timeZone']);        // 设置timeZone属性
+            unset($config['timeZone']);                     // 设置后，删除$config中的相应配置项
         } elseif (!ini_get('date.timezone')) {
             $this->setTimeZone('UTC');
         }
 
         // merge core components with custom components
+        // 将coreComponents() 所定义的核心组件配置，与开发者通过配置文件定义的组件配置进行合并。
+        // 合并时，开发者配置优先，核心组件配置起补充作用。
         foreach ($this->coreComponents() as $id => $component) {
-            if (!isset($config['components'][$id])) {
-                $config['components'][$id] = $component;
+            if (!isset($config['components'][$id])) {       // 配置文件中没有的
+                $config['components'][$id] = $component;    // 使用核心组件的配置
             } elseif (is_array($config['components'][$id]) && !isset($config['components'][$id]['class'])) {
+                // 配置文件中有的，但并未指组件的class的，使用核心组件的class
                 $config['components'][$id]['class'] = $component['class'];
             }
         }
