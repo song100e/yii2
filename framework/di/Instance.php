@@ -58,7 +58,7 @@ class Instance
     /**
      * @var string the component ID, class name, interface name or alias name
      */
-    public $id;
+    public $id;             // 仅有的属性，用于保存类名、接口名或者别名
 
 
     /**
@@ -67,7 +67,7 @@ class Instance
      */
     protected function __construct($id)
     {
-        $this->id = $id;
+        $this->id = $id;    // 构造函数，仅将传入的ID赋值给 $id 属性
     }
 
     /**
@@ -77,7 +77,7 @@ class Instance
      */
     public static function of($id)
     {
-        return new static($id);
+        return new static($id); // 静态方法创建一个Instance实例
     }
 
     /**
@@ -107,7 +107,7 @@ class Instance
      * @param ServiceLocator|Container $container the container. This will be passed to [[get()]].
      * @return object the object referenced by the Instance, or `$reference` itself if it is an object.
      * @throws InvalidConfigException if the reference is invalid
-     */
+     */// 静态方法，用于将引用解析成实际的对象，并确保这个对象的类型
     public static function ensure($reference, $type = null, $container = null)
     {
         if (is_array($reference)) {
@@ -145,7 +145,7 @@ class Instance
      * @param ServiceLocator|Container $container the container used to locate the referenced object.
      * If null, the method will first try `Yii::$app` then `Yii::$container`.
      * @return object the actual object referenced by this Instance object.
-     */
+     */// 获取这个实例所引用的实际对象，事实上它调用的是yii\di\Container::get()来获取实际对象
     public function get($container = null)
     {
         if ($container) {

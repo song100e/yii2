@@ -100,24 +100,24 @@ class Container extends Component
     /**
      * @var array singleton objects indexed by their types
      */
-    private $_singletons = [];
+    private $_singletons = [];      // 用于保存单例Singleton对象，以对象类型为键
     /**
      * @var array object definitions indexed by their types
      */
-    private $_definitions = [];
+    private $_definitions = [];     // 用于保存依赖的定义，以对象类型为键
     /**
      * @var array constructor parameters indexed by object types
      */
-    private $_params = [];
+    private $_params = [];          // 用于保存构造函数的参数，以对象类型为键
     /**
      * @var array cached ReflectionClass objects indexed by class/interface names
      */
-    private $_reflections = [];
+    private $_reflections = [];     // 用于缓存ReflectionClass对象，以类名或接口名为键
     /**
      * @var array cached dependencies indexed by class/interface names. Each class name
      * is associated with a list of constructor parameter types or default values.
      */
-    private $_dependencies = [];
+    private $_dependencies = [];    // 用于缓存依赖信息，以类名或接口名为键
 
 
     /**
@@ -144,34 +144,39 @@ class Container extends Component
      * @return object an instance of the requested class.
      * @throws InvalidConfigException if the class cannot be recognized or correspond to an invalid definition
      * @throws NotInstantiableException If resolved to an abstract class or an interface (since 2.0.9)
+     * 用于返回一个对象或一个别名所代表的对象。可以是已经注册好依赖的，也可以是没有注册过依赖的。解析依赖获取对象是一个自动递归的过程。
+     * get()不直接实例化对象，也不直接解析依赖信息。而是通过 build() 来实例化对象和解析依赖。
      */
     public function get($class, $params = [], $config = [])
     {
         if (isset($this->_singletons[$class])) {
             // singleton
-            return $this->_singletons[$class];
+            return $this->_singletons[$class];  // 已经有一个完成实例化的单例，直接引用这个单例
         } elseif (!isset($this->_definitions[$class])) {
+            // 是个尚未注册过的依赖，说明它不依赖其他单元，或者依赖信息不用定义，
+            // 则根据传入的参数创建一个实例
             return $this->build($class, $params, $config);
         }
 
-        $definition = $this->_definitions[$class];
+        $definition = $this->_definitions[$class];  // 注意这里创建了 $_definitions[$class] 数组的副本
 
-        if (is_callable($definition, true)) {
+        if (is_callable($definition, true)) {       // 依赖的定义是个 PHP callable，调用之
             $params = $this->resolveDependencies($this->mergeParams($class, $params));
             $object = call_user_func($definition, $this, $params, $config);
-        } elseif (is_array($definition)) {
+        } elseif (is_array($definition)) {          // 依赖的定义是个数组，合并相关的配置和参数，创建之
             $concrete = $definition['class'];
             unset($definition['class']);
 
-            $config = array_merge($definition, $config);
+            // 合并将依赖定义中配置数组和参数数组与传入的配置数组和参数数组合并
+            $config = array_merge($definition, $config);    
             $params = $this->mergeParams($class, $params);
 
-            if ($concrete === $class) {
+            if ($concrete === $class) { // 这是递归终止的重要条件
                 $object = $this->build($class, $params, $config);
-            } else {
+            } else {                    // 这里实现了递归解析
                 $object = $this->get($concrete, $params, $config);
             }
-        } elseif (is_object($definition)) {
+        } elseif (is_object($definition)) { // 依赖的定义是个对象则应当保存为单例 
             return $this->_singletons[$class] = $definition;
         } else {
             throw new InvalidConfigException('Unexpected object definition type: ' . gettype($definition));
@@ -246,12 +251,14 @@ class Container extends Component
      * @param array $params the list of constructor parameters. The parameters will be passed to the class
      * constructor when [[get()]] is called.
      * @return $this the container itself
-     */
+     */// 注册依赖：在每次请求时构造新的实例返回
     public function set($class, $definition = [], array $params = [])
     {
+        // 规范化 $definition 并写入 $_definitions[$class]
         $this->_definitions[$class] = $this->normalizeDefinition($class, $definition);
-        $this->_params[$class] = $params;
-        unset($this->_singletons[$class]);
+        $this->_params[$class] = $params;   // 将构造函数参数写入 $_params[$class]
+        unset($this->_singletons[$class]);  // 删除$_singletons[$class]
+        // 依赖关系的定义是唯一的。 后定义的同名依赖，会覆盖前面定义好的依赖
         return $this;
     }
 
@@ -267,12 +274,13 @@ class Container extends Component
      * constructor when [[get()]] is called.
      * @return $this the container itself
      * @see set()
-     */
+     */// 注册单例：每次请求时都返回同一对象
     public function setSingleton($class, $definition = [], array $params = [])
     {
+        // 规范化 $definition 并写入 $_definitions[$class]
         $this->_definitions[$class] = $this->normalizeDefinition($class, $definition);
-        $this->_params[$class] = $params;
-        $this->_singletons[$class] = null;
+        $this->_params[$class] = $params;   // 将构造函数参数写入 $_params[$class]
+        $this->_singletons[$class] = null;  // 将$_singleton[$class]置为null，表示还未实例化
         return $this;
     }
 
@@ -314,17 +322,17 @@ class Container extends Component
      * @param string|array|callable $definition the class definition
      * @return array the normalized class definition
      * @throws InvalidConfigException if the definition is invalid.
-     */
+     *///对于 $_definitions 数组中的元素，它要么是一个包含了”class” 元素的数组，要么是一个PHP callable， 再要么就是一个具体对象。这就是规范化后的最终结果。
     protected function normalizeDefinition($class, $definition)
     {
         if (empty($definition)) {
-            return ['class' => $class];
+            return ['class' => $class];         // $definition 是空的转换成 ['class' => $class] 形式
         } elseif (is_string($definition)) {
-            return ['class' => $definition];
+            return ['class' => $definition];    // $definition 是字符串，转换成 ['class' => $definition] 形式
         } elseif (is_callable($definition, true) || is_object($definition)) {
-            return $definition;
+            return $definition;                 // $definition 是PHP callable 或对象，则直接将其作为依赖的定义
         } elseif (is_array($definition)) {
-            if (!isset($definition['class'])) {
+            if (!isset($definition['class'])) { // $definition 是数组则确保该数组定义了 class 元素
                 if (strpos($class, '\\') !== false) {
                     $definition['class'] = $class;
                 } else {
@@ -332,7 +340,7 @@ class Container extends Component
                 }
             }
             return $definition;
-        } else {
+        } else {    // 这也不是，那也不是，那就抛出异常算了
             throw new InvalidConfigException("Unsupported definition type for \"$class\": " . gettype($definition));
         }
     }
@@ -359,10 +367,11 @@ class Container extends Component
     protected function build($class, $params, $config)
     {
         /* @var $reflection ReflectionClass */
+        // 调用上面提到的getDependencies来获取并缓存依赖信息，留意这里 list 的用法
         list ($reflection, $dependencies) = $this->getDependencies($class);
 
         foreach ($params as $index => $param) {
-            $dependencies[$index] = $param;
+            $dependencies[$index] = $param; // 用传入的 $params 的内容补充、覆盖到依赖信息中
         }
 
         $dependencies = $this->resolveDependencies($dependencies, $reflection);
@@ -375,9 +384,10 @@ class Container extends Component
 
         if (!empty($dependencies) && $reflection->implementsInterface('yii\base\Configurable')) {
             // set $config as the last parameter (existing one will be overwritten)
-            $dependencies[count($dependencies) - 1] = $config;
-            return $reflection->newInstanceArgs($dependencies);
+            $dependencies[count($dependencies) - 1] = $config;  // 按照 Object 类的要求，构造函数的最后一个参数为 $config 数组
+            return $reflection->newInstanceArgs($dependencies); // 实例化这个对象（从给出的参数创建一个新的类实例）
         } else {
+            // 会出现异常的情况有二：一是依赖信息为空，也就是你前面又没注册过，二是要构造的类，根本就不是 Object 类。
             $object = $reflection->newInstanceArgs($dependencies);
             foreach ($config as $name => $value) {
                 $object->$name = $value;
@@ -411,30 +421,31 @@ class Container extends Component
      * Returns the dependencies of the specified class.
      * @param string $class class name, interface name or alias name
      * @return array the dependencies of the specified class.
-     */
+     *///DI容器必然构造类的实例，必然调用构造函数，那么必然为构造函数准备并传入相应的依赖单元
     protected function getDependencies($class)
     {
         if (isset($this->_reflections[$class])) {
             return [$this->_reflections[$class], $this->_dependencies[$class]];
-        }
+        }// 如果已经缓存了其依赖信息，直接返回缓存中的依赖信息
 
         $dependencies = [];
-        $reflection = new ReflectionClass($class);
+        // 使用PHP5 的反射机制来获取类的有关信息，主要就是为了获取依赖信息
+        $reflection = new ReflectionClass($class);      // 这里是重点
 
-        $constructor = $reflection->getConstructor();
+        $constructor = $reflection->getConstructor();   // 通过类的构建函数的参数来了解这个类依赖于哪些单元
         if ($constructor !== null) {
             foreach ($constructor->getParameters() as $param) {
                 if ($param->isDefaultValueAvailable()) {
-                    $dependencies[] = $param->getDefaultValue();
+                    $dependencies[] = $param->getDefaultValue();// 构造函数如果有默认值，将默认值作为依赖。即然是默认值了，就肯定是简单类型了。
                 } else {
-                    $c = $param->getClass();
+                    $c = $param->getClass();            // 构造函数没有默认值，则为其创建一个引用。就是前面提到的 Instance 类型。
                     $dependencies[] = Instance::of($c === null ? null : $c->getName());
                 }
             }
         }
 
-        $this->_reflections[$class] = $reflection;
-        $this->_dependencies[$class] = $dependencies;
+        $this->_reflections[$class] = $reflection;      // 将 ReflectionClass 对象缓存起来
+        $this->_dependencies[$class] = $dependencies;   // 将依赖信息缓存起来
 
         return [$reflection, $dependencies];
     }
@@ -449,9 +460,11 @@ class Container extends Component
     protected function resolveDependencies($dependencies, $reflection = null)
     {
         foreach ($dependencies as $index => $dependency) {
+            // 前面getDependencies() 函数往 $_dependencies[] 中写入的是一个 Instance 数组
             if ($dependency instanceof Instance) {
                 if ($dependency->id !== null) {
-                    $dependencies[$index] = $this->get($dependency->id);
+                    // 向容器索要所依赖的实例，递归调用 yii\di\Container::get()
+                    $dependencies[$index] = $this->get($dependency->id);    // 注意这儿的get
                 } elseif ($reflection !== null) {
                     $name = $reflection->getConstructor()->getParameters()[$index]->getName();
                     $class = $reflection->getName();
