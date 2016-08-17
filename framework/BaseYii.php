@@ -271,13 +271,13 @@ class BaseYii
      */
     public static function autoload($className)
     {
-        if (isset(static::$classMap[$className])) {
+        if (isset(static::$classMap[$className])) {         // YII2核心类
             $classFile = static::$classMap[$className];
             if ($classFile[0] === '@') {
                 $classFile = static::getAlias($classFile);
             }
-        } elseif (strpos($className, '\\') !== false) {
-            $classFile = static::getAlias('@' . str_replace('\\', '/', $className) . '.php', false);
+        } elseif (strpos($className, '\\') !== false) {     // 含\\ 则替换/ 成真实的目录
+            $classFile = static::getAlias('@' . str_replace('\\', '/', $className) . '.php', false);// 拼接
             if ($classFile === false || !is_file($classFile)) {
                 return;
             }
@@ -285,7 +285,7 @@ class BaseYii
             return;
         }
 
-        include($classFile);
+        include($classFile);    // php原生的包含
 
         if (YII_DEBUG && !class_exists($className, false) && !interface_exists($className, false) && !trait_exists($className, false)) {
             throw new UnknownClassException("Unable to find '$className' in file: $classFile. Namespace missing?");
