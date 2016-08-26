@@ -336,17 +336,17 @@ class BaseYii
      */
     public static function createObject($type, array $params = [])
     {
-        if (is_string($type)) {
+        if (is_string($type)) {     // 字符串，代表一个类名、接口名、别名。
             return static::$container->get($type, $params);
-        } elseif (is_array($type) && isset($type['class'])) {
+        } elseif (is_array($type) && isset($type['class'])) {       // 是个数组，代表配置数组，必须含有 class 元素。
             $class = $type['class'];
             unset($type['class']);
-            return static::$container->get($class, $params, $type);
-        } elseif (is_callable($type, true)) {
-            return static::$container->invoke($type, $params);
-        } elseif (is_array($type)) {
+            return static::$container->get($class, $params, $type); // 调用DI容器的get() 来获取、创建实例
+        } elseif (is_callable($type, true)) {   // 是个PHP callable，那就调用它，并将其返回值作为服务或组件的实例返回
+            return static::$container->invoke($type, $params);      // _invoke():以调用函数的方式调用一个对象时
+        } elseif (is_array($type)) {            // 是个数组但没有 class 元素，抛出异常
             throw new InvalidConfigException('Object configuration must be an array containing a "class" element.');
-        } else {
+        } else {                                // 其他情况，抛出异常
             throw new InvalidConfigException('Unsupported configuration type: ' . gettype($type));
         }
     }

@@ -25,5 +25,5 @@ class Yii extends \yii\BaseYii
 spl_autoload_register(['Yii', 'autoload'], true, true);
 // 注意第三个参数将 Yii::autoload() 作为autoloader插入到栈的最前面
 // Yii类是里面没有任何代码,实际上将 BaseYii::autoload() 注册为autoloader
-Yii::$classMap = require(__DIR__ . '/classes.php');// 核心类映射关系
-Yii::$container = new yii\di\Container();
+Yii::$classMap = require(__DIR__ . '/classes.php');	// 核心类映射关系
+Yii::$container = new yii\di\Container();			// 构造DI容器
