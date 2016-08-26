@@ -176,10 +176,11 @@ class Request extends \yii\base\Request
      */
     public function resolve()
     {
-        $result = Yii::$app->getUrlManager()->parseRequest($this);
+        $result = Yii::$app->getUrlManager()->parseRequest($this);  // 使用urlManager来解析请求
         if ($result !== false) {
             list ($route, $params) = $result;
             if ($this->_queryParams === null) {
+                // 将解析出来的参数与 $_GET 参数进行合并
                 $_GET = $params + $_GET; // preserve numeric keys
             } else {
                 $this->_queryParams = $params + $this->_queryParams;
@@ -198,21 +199,22 @@ class Request extends \yii\base\Request
     public function getHeaders()
     {
         if ($this->_headers === null) {
-            $this->_headers = new HeaderCollection;
+            $this->_headers = new HeaderCollection;     // 实例化为一个HeaderCollection
             if (function_exists('getallheaders')) {
-                $headers = getallheaders();
+                $headers = getallheaders();             // 使用 getallheaders() 获取请求头部，以数组形式返回
             } elseif (function_exists('http_get_request_headers')) {
-                $headers = http_get_request_headers();
+                $headers = http_get_request_headers();  // 使用 http_get_request_headers() 获取请求头部，以数组形式返回
             } else {
-                foreach ($_SERVER as $name => $value) {
-                    if (strncmp($name, 'HTTP_', 5) === 0) {
+                foreach ($_SERVER as $name => $value) { // 使用 $_SERVER 数组获取头部
+                    if (strncmp($name, 'HTTP_', 5) === 0) { // 针对所有 $_SERVER['HTTP_*'] 元素
                         $name = str_replace(' ', '-', ucwords(strtolower(str_replace('_', ' ', substr($name, 5)))));
-                        $this->_headers->add($name, $value);
+                        $this->_headers->add($name, $value);// 将 HTTP_HEADER_NAME 转换成 Header-Name 的形式
                     }
                 }
 
                 return $this->_headers;
             }
+            // 将数组形式的请求头部变成集合的元素
             foreach ($headers as $name => $value) {
                 $this->_headers->add($name, $value);
             }
@@ -225,17 +227,23 @@ class Request extends \yii\base\Request
      * Returns the method of the current request (e.g. GET, POST, HEAD, PUT, PATCH, DELETE).
      * @return string request method, such as GET, POST, HEAD, PUT, PATCH, DELETE.
      * The value returned is turned into upper case.
+     * 返回当前请求的方法，请留意方法名称是大小写敏感的，按规范应转换为大写字母
      */
     public function getMethod()
     {
+        // $this->methodParam 默认值为 '_method'
+        // 如果指定 $_POST['_method'] ，表示使用POST请求来模拟其他方法的请求。
+        // 此时 $_POST['_method'] 即为所模拟的请求类型。
         if (isset($_POST[$this->methodParam])) {
             return strtoupper($_POST[$this->methodParam]);
         }
         
+        // 或者使用 $_SERVER['HTTP_X_HTTP_METHOD_OVERRIDE'] 的值作为方法名。
         if (isset($_SERVER['HTTP_X_HTTP_METHOD_OVERRIDE'])) {
             return strtoupper($_SERVER['HTTP_X_HTTP_METHOD_OVERRIDE']);
         }
         
+        // 或者使用 $_SERVER['REQUEST_METHOD'] 作为方法名，未指定时，默认为 GET 方法
         if (isset($_SERVER['REQUEST_METHOD'])) {
             return strtoupper($_SERVER['REQUEST_METHOD']);
         }
@@ -346,9 +354,11 @@ class Request extends \yii\base\Request
      */
     public function getRawBody()
     {
-        if ($this->_rawBody === null) {
-            $this->_rawBody = file_get_contents('php://input');
+        if ($this->_rawBody === null) {                         // 使用 $_POST 得到的是空的内容，这时就必须使用 php://input
+            $this->_rawBody = file_get_contents('php://input'); // php://input:只读流，用于获取请求体
         }
+        // $_POST 只支持 application/x-www-form-urlencoded 和 multipart/form-data-encoded 两种Content Type
+        // 其中前一种就是简单的HTML表单以 method="post" 提交时的形式， 后一种主要是用于上传文档
 
         return $this->_rawBody;
     }
@@ -375,38 +385,41 @@ class Request extends \yii\base\Request
      * @see getMethod()
      * @see getBodyParam()
      * @see setBodyParams()
+     * 获取所有POST参数，所有POST参数保存在 $this->_bodyParams 中
      */
     public function getBodyParams()
     {
         if ($this->_bodyParams === null) {
-            if (isset($_POST[$this->methodParam])) {
+            if (isset($_POST[$this->methodParam])) {                // 如果是使用 POST 请求模拟其他请求的
                 $this->_bodyParams = $_POST;
-                unset($this->_bodyParams[$this->methodParam]);
+                unset($this->_bodyParams[$this->methodParam]);      // 将 $_POST['_method'] 删掉，剩余的$_POST就是了
                 return $this->_bodyParams;
             }
 
             $contentType = $this->getContentType();
+            // 获取Content Type，对于 'application/json; charset=UTF-8'，得到的是 'application/json'
             if (($pos = strpos($contentType, ';')) !== false) {
                 // e.g. application/json; charset=UTF-8
                 $contentType = substr($contentType, 0, $pos);
             }
 
+            // 根据Content Type 选择相应的解析器对请求体进行解析
             if (isset($this->parsers[$contentType])) {
-                $parser = Yii::createObject($this->parsers[$contentType]);
+                $parser = Yii::createObject($this->parsers[$contentType]);  // 创建解析器实例
                 if (!($parser instanceof RequestParserInterface)) {
                     throw new InvalidConfigException("The '$contentType' request parser is invalid. It must implement the yii\\web\\RequestParserInterface.");
                 }
                 $this->_bodyParams = $parser->parse($this->getRawBody(), $contentType);
-            } elseif (isset($this->parsers['*'])) {
+            } elseif (isset($this->parsers['*'])) {     // 如果没有与Content Type对应的解析器，使用通用解析器
                 $parser = Yii::createObject($this->parsers['*']);
                 if (!($parser instanceof RequestParserInterface)) {
                     throw new InvalidConfigException("The fallback request parser is invalid. It must implement the yii\\web\\RequestParserInterface.");
                 }
                 $this->_bodyParams = $parser->parse($this->getRawBody(), $contentType);
-            } elseif ($this->getMethod() === 'POST') {
+            } elseif ($this->getMethod() === 'POST') {  // 连通用解析器也没有看看是不是POST请求，如果是，PHP已经将请求参数放到$_POST中了，直接用就OK了
                 // PHP has already parsed the body so we have all params in $_POST
                 $this->_bodyParams = $_POST;
-            } else {
+            } else {    // 以上情况都不是，那就使用PHP的 mb_parse_str() 进行解析
                 $this->_bodyParams = [];
                 mb_parse_str($this->getRawBody(), $this->_bodyParams);
             }
@@ -438,7 +451,7 @@ class Request extends \yii\base\Request
     public function getBodyParam($name, $defaultValue = null)
     {
         $params = $this->getBodyParams();
-
+        // 根据参数名获取单一的POST参数，不存在时，返回指定的默认值
         return isset($params[$name]) ? $params[$name] : $defaultValue;
     }
 
@@ -448,6 +461,7 @@ class Request extends \yii\base\Request
      * @param string $name the parameter name
      * @param mixed $defaultValue the default parameter value if the parameter does not exist.
      * @return array|mixed
+     * 类以于get()，用于获取POST参数，也可以指定参数名和默认值
      */
     public function post($name = null, $defaultValue = null)
     {
@@ -466,10 +480,13 @@ class Request extends \yii\base\Request
      * This method will return the contents of `$_GET` if params where not explicitly set.
      * @return array the request GET parameter values.
      * @see setQueryParams()
+     * 用于获取所有的GET参数，所有的GET参数保存在 $_GET 或 $this->_queryParams 中。
      */
     public function getQueryParams()
     {
         if ($this->_queryParams === null) {
+            // 请留意这里并未使用 $this->_queryParams = $_GET 进行缓存。
+            // 说明一旦指定了 $_queryParams 则 $_GET 会失效。
             return $_GET;
         }
 
@@ -493,6 +510,7 @@ class Request extends \yii\base\Request
      * @param string $name the parameter name
      * @param mixed $defaultValue the default parameter value if the parameter does not exist.
      * @return array|mixed
+     * 用于获取GET参数，可以指定参数名和默认值
      */
     public function get($name = null, $defaultValue = null)
     {
@@ -514,7 +532,7 @@ class Request extends \yii\base\Request
     public function getQueryParam($name, $defaultValue = null)
     {
         $params = $this->getQueryParams();
-
+        // 根据参数名获取单一的GET参数，不存在时，返回指定的默认值
         return isset($params[$name]) ? $params[$name] : $defaultValue;
     }
 
@@ -595,12 +613,13 @@ class Request extends \yii\base\Request
      * The implementation of this method referenced Zend_Controller_Request_Http in Zend Framework.
      * @return string the relative URL of the entry script.
      * @throws InvalidConfigException if unable to determine the entry script URL
+     * 这个方法用于获取当前入口脚本的相对路径
      */
     public function getScriptUrl()
     {
         if ($this->_scriptUrl === null) {
-            $scriptFile = $this->getScriptFile();
-            $scriptName = basename($scriptFile);
+            $scriptFile = $this->getScriptFile();   // $this->getScriptFile() 用的是 $_SERVER['SCRIPT_FILENAME']
+            $scriptName = basename($scriptFile);    // 下面的这些判断分支代码，为各主流PHP framework所用
             if (isset($_SERVER['SCRIPT_NAME']) && basename($_SERVER['SCRIPT_NAME']) === $scriptName) {
                 $this->_scriptUrl = $_SERVER['SCRIPT_NAME'];
             } elseif (isset($_SERVER['PHP_SELF']) && basename($_SERVER['PHP_SELF']) === $scriptName) {
@@ -700,16 +719,18 @@ class Request extends \yii\base\Request
      */
     protected function resolvePathInfo()
     {
-        $pathInfo = $this->getUrl();
-
+        $pathInfo = $this->getUrl();    // 这个 getUrl() 调用的是 resolveRequestUri() 来获取当前的URL
+        // 去除URL中的查询参数部分，即 ? 及之后的内容
         if (($pos = strpos($pathInfo, '?')) !== false) {
             $pathInfo = substr($pathInfo, 0, $pos);
         }
-
+        // 使用PHP urldecode() 进行解码，所有 %## 转成对应的字符， + 转成空格
         $pathInfo = urldecode($pathInfo);
 
         // try to encode in UTF8 if not so
         // http://w3.org/International/questions/qa-forms-utf-8.html
+        // 这个正则列举了各种编码方式，通过排除这些编码，来确认是 UTF-8 编码
+        // 出处可参考 http://w3.org/International/questions/qa-forms-utf-8.html
         if (!preg_match('%^(?:
             [\x09\x0A\x0D\x20-\x7E]              # ASCII
             | [\xC2-\xDF][\x80-\xBF]             # non-overlong 2-byte
@@ -724,8 +745,8 @@ class Request extends \yii\base\Request
             $pathInfo = utf8_encode($pathInfo);
         }
 
-        $scriptUrl = $this->getScriptUrl();
-        $baseUrl = $this->getBaseUrl();
+        $scriptUrl = $this->getScriptUrl(); // 获取当前脚本的URL
+        $baseUrl = $this->getBaseUrl();     // 获取Base URL
         if (strpos($pathInfo, $scriptUrl) === 0) {
             $pathInfo = substr($pathInfo, strlen($scriptUrl));
         } elseif ($baseUrl === '' || strpos($pathInfo, $baseUrl) === 0) {
@@ -737,7 +758,7 @@ class Request extends \yii\base\Request
         }
 
         if (substr($pathInfo, 0, 1) === '/') {
-            $pathInfo = substr($pathInfo, 1);
+            $pathInfo = substr($pathInfo, 1);   // 去除 $pathInfo 前的 '/'
         }
 
         return (string) $pathInfo;
@@ -792,14 +813,15 @@ class Request extends \yii\base\Request
      */
     protected function resolveRequestUri()
     {
-        if (isset($_SERVER['HTTP_X_REWRITE_URL'])) { // IIS
+        if (isset($_SERVER['HTTP_X_REWRITE_URL'])) {// IIS // 使用了开启了ISAPI_Rewrite的IIS
             $requestUri = $_SERVER['HTTP_X_REWRITE_URL'];
-        } elseif (isset($_SERVER['REQUEST_URI'])) {
+        } elseif (isset($_SERVER['REQUEST_URI'])) { // 一般情况，需要去掉URL中的协议、主机、端口等内容
             $requestUri = $_SERVER['REQUEST_URI'];
             if ($requestUri !== '' && $requestUri[0] !== '/') {
+                // 如果URI不为空或以'/'打头，则去除 http:// 或 https:// 直到第一个 /
                 $requestUri = preg_replace('/^(http|https):\/\/[^\/]+/i', '', $requestUri);
             }
-        } elseif (isset($_SERVER['ORIG_PATH_INFO'])) { // IIS 5.0 CGI
+        } elseif (isset($_SERVER['ORIG_PATH_INFO'])) { // IIS 5.0 CGI // IIS 5.0， PHP以CGI方式运行，需要把查询参数接上
             $requestUri = $_SERVER['ORIG_PATH_INFO'];
             if (!empty($_SERVER['QUERY_STRING'])) {
                 $requestUri .= '?' . $_SERVER['QUERY_STRING'];

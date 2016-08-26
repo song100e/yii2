@@ -376,13 +376,14 @@ abstract class Application extends Module
             $this->trigger(self::EVENT_BEFORE_REQUEST);
 
             $this->state = self::STATE_HANDLING_REQUEST;
+            // 获取用户请求，并进行处理，处理的过程也是产生响应内容的过程
             $response = $this->handleRequest($this->getRequest());
 
             $this->state = self::STATE_AFTER_REQUEST;
             $this->trigger(self::EVENT_AFTER_REQUEST);
 
             $this->state = self::STATE_SENDING_RESPONSE;
-            $response->send();
+            $response->send();  // 将响应内容发送回用户
 
             $this->state = self::STATE_END;
 

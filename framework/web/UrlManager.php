@@ -233,19 +233,20 @@ class UrlManager extends Component
      */
     public function parseRequest($request)
     {
-        if ($this->enablePrettyUrl) {
-            $pathInfo = $request->getPathInfo();
+        if ($this->enablePrettyUrl) {               // 启用了 enablePrettyUrl 的情况  
+            $pathInfo = $request->getPathInfo();    // 获取路径信息
             /* @var $rule UrlRule */
+            // 依次使用所有路由规则来解析当前请求,一旦有一个规则适用，后面的规则就没有被调用的机会了
             foreach ($this->rules as $rule) {
                 if (($result = $rule->parseRequest($this, $request)) !== false) {
                     return $result;
                 }
             }
 
-            if ($this->enableStrictParsing) {
-                return false;
+            if ($this->enableStrictParsing) {   // 所有路由规则都不适用，又启用了 enableStrictParsing
+                return false;                   // 那只能返回 false
             }
-
+            // 所有路由规则都不适用，幸好还没启用 enableStrictParing，那就用默认的解析逻辑
             Yii::trace('No matching URL rules. Using default URL parsing logic.', __METHOD__);
 
             // Ensure, that $pathInfo does not end with more than one slash.
@@ -253,23 +254,23 @@ class UrlManager extends Component
                 return false;
             }
 
-            $suffix = (string) $this->suffix;
-            if ($suffix !== '' && $pathInfo !== '') {
+            $suffix = (string) $this->suffix;           // 配置时所定义的fake suffix，诸如 ".html" 等
+            if ($suffix !== '' && $pathInfo !== '') {   // 这个分支的作用在于确保 $pathInfo 不能仅仅是包含一个 ".html"。
                 $n = strlen($this->suffix);
-                if (substr_compare($pathInfo, $this->suffix, -$n, $n) === 0) {
+                if (substr_compare($pathInfo, $this->suffix, -$n, $n) === 0) {  // 留意这个 -$n 的用法
                     $pathInfo = substr($pathInfo, 0, -$n);
                     if ($pathInfo === '') {
                         // suffix alone is not allowed
-                        return false;
+                        return false;   // 仅包含 ".html" 的$pathInfo要之何用？掐死算了。
                     }
-                } else {
+                } else {                                // 后缀没匹配上
                     // suffix doesn't match
                     return false;
                 }
             }
 
             return [$pathInfo, []];
-        } else {
+        } else {    // 没有启用 enablePrettyUrl的情况，那就更简单了，直接使用默认的解析逻辑就OK了
             Yii::trace('Pretty URL not enabled. Using default URL parsing logic.', __METHOD__);
             $route = $request->getQueryParam($this->routeParam, '');
             if (is_array($route)) {
